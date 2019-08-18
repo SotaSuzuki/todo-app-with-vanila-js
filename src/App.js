@@ -1,35 +1,57 @@
-import { element } from './view/html-util.js';
-import TodoItem from './view/TodoItemModel.js';
-import TodoList from './view/TodoListModel.js';
-
-console.log('App.js: loaded')
+import { render } from './utils/html-util.js';
+import TodoItemModel from './models/TodoItemModel.js';
+import TodoListModel from './models/TodoListModel.js';
+import TodoListView from './view/TodoListView.js';
 
 export class App {
   constructor() {
-    console.log('App initialized')
+    this.todoListView = new TodoListView();
+    this.todoListModel = new TodoListModel();
+    this.$textInput = document.querySelector('#js-form-input');
+    this.$form = document.querySelector('#js-form');
+    this.$todoContainer = document.querySelector('#js-todo-list');
+    this.$todosCount = document.querySelector('#js-todo-count');
+    this.handleSubmit = this.handleSubmit.bind(this)
+    this.handleChange = this.handleChange.bind(this)
+  }
+
+  handleAdd(title) {
+    const todoItem = new TodoItemModel({ title })
+    this.todoListModel.addTodo(todoItem);
+  }
+
+  handleUpdate({ id, completed }) {
+    this.todoListModel.updateTodo({ id, completed: !completed })
+  }
+
+  handleDelete({ id }) {
+    this.todoListModel.deleteTodo({ id });
+  }
+
+  handleSubmit(evt) {
+    evt.preventDefault();
+    const title = this.$textInput.value
+    this.handleAdd(title)
+    this.$textInput.value = ''
+  }
+
+  handleChange() {
+    const todoItems = this.todoListModel.getAllItems();
+    const $todoList = this.todoListView.createElement(todoItems, {
+      onUpdateTodo: ({ id, completed }) => this.handleUpdate({ id, completed }),
+      onDeleteTodo: ({ id }) => this.handleDelete({ id }),
+    })
+    render($todoList, this.$todoContainer);
+    this.$todosCount.textContent = `Todo アイテム数: ${this.todoListModel.totalCount}`
   }
 
   mount() {
-    console.log('App mounted')
-    const $form = document.querySelector('#js-form');
-    const $textInput = document.querySelector('#js-form-input');
-    const $todoList = document.querySelector('#js-todo-list');
-    const $todosCount = document.querySelector('#js-todo-count');
+    this.todoListModel.onChange = this.handleChange
+    this.$form.addEventListener('submit', this.handleSubmit)
+  }
 
-    const todoList = new TodoList();
-    todoList.onAdded = () => {
-      console.log('added');
-    }
-
-    $form.addEventListener('submit', evt => {
-      evt.preventDefault();
-      const todoItem = new TodoItem({ title: $textInput.value })
-      todoList.addItem(todoItem);
-      $todoList.appendChild(element`<li>${todoItem.title}</li>`)
-      $todosCount.textContent = `Todo アイテム数: ${todoList.items.length}`
-
-      console.log(todoList);
-      $textInput.value = ''
-    })
+  unmount() {
+    $form.removeEventListener('submit', this.handleSubmit)
+    this.todoListModel.offChange = handleChange
   }
 }
